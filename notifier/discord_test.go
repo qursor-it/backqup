@@ -10,6 +10,7 @@ func Test_Discord(t *testing.T) {
 	base := &Base{}
 
 	s := NewDiscord(base)
+	assert.Equal(t, "Discord", s.Service)
 	assert.Equal(t, "POST", s.method)
 	assert.Equal(t, "application/json", s.contentType)
 

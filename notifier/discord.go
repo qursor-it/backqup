@@ -12,7 +12,7 @@ type discordPayload struct {
 func NewDiscord(base *Base) *Webhook {
 	return &Webhook{
 		Base:        *base,
-		Service:     "feishu",
+		Service:     "Discord",
 		method:      "POST",
 		contentType: "application/json",
 		buildBody: func(title, message string) ([]byte, error) {
