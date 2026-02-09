@@ -89,6 +89,9 @@ models:
         username: ubuntu
         password: password
         timeout: 300
+    archive:
+      includes:
+        - /etc/hosts
   test_model:
     compress_with:
       type: tgz
