@@ -33,9 +33,13 @@ func Run(archivePath string, model config.ModelConfig) (encryptPath string, err 
 
 	base := newBase(archivePath, model)
 	var enc Encryptor
+	ext := ".enc"
 	switch model.EncryptWith.Type {
 	case "openssl":
 		enc = NewOpenSSL(base)
+	case "age":
+		enc = NewAge(base)
+		ext = ".age"
 	default:
 		encryptPath = archivePath
 		return
@@ -49,7 +53,7 @@ func Run(archivePath string, model config.ModelConfig) (encryptPath string, err 
 	logger.Info("encrypted:", encryptPath)
 
 	// save Extension
-	model.Viper.Set("Ext", model.Viper.GetString("Ext")+".enc")
+	model.Viper.Set("Ext", model.Viper.GetString("Ext")+ext)
 
 	return
 }

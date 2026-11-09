@@ -1,9 +1,26 @@
-FROM alpine:latest
-ARG VERSION=latest
+FROM node:20-alpine AS web
+RUN apk add --no-cache git
+WORKDIR /src/web
+COPY web/package.json web/yarn.lock ./
+RUN yarn install --frozen-lockfile
+COPY web/ .
+RUN yarn build
+
+FROM golang:1.23-alpine AS build
+ARG VERSION=dev
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+COPY --from=web /src/web/dist web/dist
+RUN CGO_ENABLED=0 go build -ldflags "-s -w -X main.version=${VERSION}" -o /out/gobackup .
+
+FROM alpine:3.23
 RUN apk add \
     curl \
     ca-certificates \
     openssl \
+    age \
     postgresql18-client \
     mariadb-connector-c \
     mysql-client \
@@ -92,7 +109,6 @@ RUN case "$(uname -m)" in \
     "etcd-${ETCD_VER}-linux-${arch}.tar.gz" && \
     etcdctl version
 
-ADD install /install
-RUN /install ${VERSION} && rm /install
+COPY --from=build /out/gobackup /usr/local/bin/gobackup
 
 CMD ["/usr/local/bin/gobackup", "run"]

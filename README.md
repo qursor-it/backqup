@@ -1,3 +1,42 @@
+# backqup
+
+backqup is a fork of [gobackup](https://github.com/gobackup/gobackup) maintained by Qursor. It keeps everything gobackup does and adds:
+
+- **age public-key encryption** (`encrypt_with: type: age`): backups are encrypted to one or more `age1...` recipients, so the server that runs the backups holds no secret able to decrypt them.
+- **PostgreSQL dump validation**: after a custom-format `pg_dump` (set via `compress`, or `-Fc` / `--format=custom` in `args`), `pg_restore --list` runs on the file and the backup fails if it is corrupt, so a broken dump is never uploaded. Plain-SQL and `all_databases` (`pg_dumpall`) dumps are not validated.
+- **Docker image built from source** (the upstream Dockerfile downloaded upstream's released binary), with `age` included.
+
+```yaml
+models:
+  app:
+    databases:
+      appdb:
+        type: postgresql
+        host: db
+        database: appdb
+        username: postgres
+        password: $PG_PASSWORD
+        compress: gzip
+    encrypt_with:
+      type: age
+      recipients: # public keys only; also accepts a single string
+        - age1<your-public-key>
+      # recipients_file: /etc/gobackup/recipients.txt
+    storages:
+      s3:
+        type: s3
+        bucket: my-backups
+        path: app
+```
+
+Output files get the `.age` extension (`<timestamp>.tar.age`); decrypt with `age -d -i key.txt -o backup.tar backup.tar.age`.
+
+Testing plan, local end-to-end test and restore drill: [docs/TESTING.md](docs/TESTING.md).
+
+backqup is released under the same MIT license as gobackup; the original copyright notice (Jason Lee) in [LICENSE](LICENSE) is unchanged. All credit for the base project goes to the gobackup authors. The rest of this file is the upstream README.
+
+---
+
 <p align="center">
 <img src="https://user-images.githubusercontent.com/5518/205909959-12b92929-4ac5-4bb5-9111-6f9a3ed76cf6.png" width="160" />
 

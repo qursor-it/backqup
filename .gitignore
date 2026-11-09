@@ -24,3 +24,4 @@ log/
 .DS_Store
 tests/backups/
 tests/data/
+tests/e2e/.work/

@@ -1,0 +1,63 @@
+# Throwaway stack for tests/e2e/run.sh. No ports are published.
+name: backqup-e2e
+
+x-pg: &pg
+  image: postgres:16-alpine
+  environment:
+    POSTGRES_PASSWORD: pgpass
+    POSTGRES_DB: appdb
+
+x-maria: &maria
+  image: mariadb:11
+  environment:
+    MARIADB_ROOT_PASSWORD: mariapass
+    MARIADB_DATABASE: appdb
+
+services:
+  pg:
+    <<: *pg
+    volumes:
+      - ./seed/pg.sql:/docker-entrypoint-initdb.d/seed.sql:ro
+
+  maria:
+    <<: *maria
+    volumes:
+      - ./seed/maria.sql:/docker-entrypoint-initdb.d/seed.sql:ro
+
+  # fresh, empty servers used as restore targets
+  pg-restore: # >= 17: pg_dump 18 emits `SET transaction_timeout`, unknown to older servers
+    <<: *pg
+    image: postgres:18-alpine
+
+  maria-restore:
+    <<: *maria
+
+  # S3-compatible store (MinIO no longer publishes images); no auth configured
+  s3:
+    image: chrislusf/seaweedfs
+    command: server -dir=/data -s3 -s3.port=8333
+
+  # one-shot: `docker compose run --rm aws "<shell command>"`
+  aws:
+    image: amazon/aws-cli
+    entrypoint: ["sh", "-c"]
+    environment:
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+    volumes:
+      - ./.work:/work
+    depends_on:
+      - s3
+
+  backqup:
+    image: ${BACKQUP_IMAGE:-backqup:dev}
+    entrypoint: ["sleep", "infinity"]
+    environment:
+      PG_PASSWORD: pgpass
+      MARIA_PASSWORD: mariapass
+      S3_ACCESS_KEY: test
+      S3_SECRET_KEY: test
+    volumes:
+      - ./gobackup.yml:/etc/gobackup/gobackup.yml:ro
+      - ./.work:/work

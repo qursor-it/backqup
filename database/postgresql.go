@@ -161,6 +161,24 @@ func (db *PostgreSQL) build() string {
 	return command + " " + strings.Join(dumpArgs, " ")
 }
 
+// shouldValidate tells whether the dump is checked with `pg_restore --list`.
+// Only single-database custom-format dumps can be validated: plain-SQL dumps
+// and pg_dumpall output are not readable by pg_restore and are left unchecked.
+func (db *PostgreSQL) shouldValidate() bool {
+	if db.allDatabases {
+		return false
+	}
+	if len(db.compress) > 0 {
+		return true
+	}
+	for _, a := range strings.Fields(db.args) {
+		if a == "-Fc" || a == "--format=custom" {
+			return true
+		}
+	}
+	return false
+}
+
 func (db *PostgreSQL) perform() error {
 	logger := logger.Tag("PostgreSQL")
 
@@ -178,6 +196,12 @@ func (db *PostgreSQL) perform() error {
 	}
 	if err != nil {
 		return err
+	}
+	if db.shouldValidate() {
+		logger.Info("validating dump with pg_restore --list...")
+		if _, err = helper.Exec("pg_restore", "--list", db._dumpFilePath); err != nil {
+			return fmt.Errorf("PostgreSQL dump validation failed (pg_restore --list): %w", err)
+		}
 	}
 	logger.Info("dump path:", db._dumpFilePath)
 	return nil

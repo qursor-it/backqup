@@ -225,3 +225,21 @@ func TestPostgreSQL_allDatabasesWithCompression(t *testing.T) {
 	script := db.build()
 	assert.Equal(t, script, "pg_dumpall --host=1.2.3.4 --port=1234 --username=user1 > /data/backups/postgresql/postgresql1/all_databases.sql.gz")
 }
+
+func TestPostgreSQL_shouldValidate(t *testing.T) {
+	cases := []struct {
+		name string
+		db   PostgreSQL
+		want bool
+	}{
+		{"plain sql", PostgreSQL{}, false},
+		{"compress implies custom format", PostgreSQL{compress: "gzip"}, true},
+		{"-Fc in args", PostgreSQL{args: "--no-owner -Fc"}, true},
+		{"--format=custom in args", PostgreSQL{args: "--format=custom"}, true},
+		{"other args", PostgreSQL{args: "--no-owner --format=plain"}, false},
+		{"pg_dumpall is never validated", PostgreSQL{allDatabases: true, compress: "gzip"}, false},
+	}
+	for _, c := range cases {
+		assert.Equal(t, c.want, c.db.shouldValidate())
+	}
+}
