@@ -35,6 +35,8 @@ Output files get the `.age` extension (`<timestamp>.tar.age`); decrypt with `age
 
 Testing plan, local end-to-end test and restore drill: [docs/TESTING.md](docs/TESTING.md).
 
+Release: the [Jenkinsfile](Jenkinsfile) tests every branch (unit, image, e2e); pushing a `vX.Y.Z` tag also publishes `<registry>/qursor/backqup:X.Y.Z` and `:latest`.
+
 backqup is released under the same MIT license as gobackup; the original copyright notice (Jason Lee) in [LICENSE](LICENSE) is unchanged. All credit for the base project goes to the gobackup authors. The rest of this file is the upstream README.
 
 ---

@@ -6,6 +6,11 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 go build -ldflags "-s -w -X main.version=${VERSION}" -o /out/gobackup .
 
+# CI only (docker build --target test): not part of the final image.
+# TestUtils_init is skipped: it already fails upstream with busybox tar.
+FROM build AS test
+RUN apk add --no-cache age && go vet ./... && go test -skip TestUtils_init ./...
+
 FROM alpine:3.23
 RUN apk add \
     curl \
