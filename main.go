@@ -14,7 +14,6 @@ import (
 	"github.com/gobackup/gobackup/logger"
 	"github.com/gobackup/gobackup/model"
 	"github.com/gobackup/gobackup/scheduler"
-	"github.com/gobackup/gobackup/web"
 )
 
 const (
@@ -145,11 +144,7 @@ func main() {
 					return fmt.Errorf("failed to start scheduler: %w", err)
 				}
 
-				if !config.Web.Enabled {
-					select {}
-				}
-
-				return web.StartHTTP(version)
+				select {}
 			},
 		},
 	}

@@ -4,8 +4,6 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-# backqup does not ship the web UI: an empty placeholder satisfies the go:embed in web/.
-RUN mkdir -p web/dist && touch web/dist/index.html
 RUN CGO_ENABLED=0 go build -ldflags "-s -w -X main.version=${VERSION}" -o /out/gobackup .
 
 FROM alpine:3.23

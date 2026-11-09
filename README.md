@@ -5,7 +5,7 @@ backqup is a fork of [gobackup](https://github.com/gobackup/gobackup) maintained
 - **age public-key encryption** (`encrypt_with: type: age`): backups are encrypted to one or more `age1...` recipients, so the server that runs the backups holds no secret able to decrypt them.
 - **PostgreSQL dump validation**: after a custom-format `pg_dump` (set via `compress`, or `-Fc` / `--format=custom` in `args`), `pg_restore --list` runs on the file and the backup fails if it is corrupt, so a broken dump is never uploaded. Plain-SQL and `all_databases` (`pg_dumpall`) dumps are not validated.
 - **Docker image built from source** (the upstream Dockerfile downloaded upstream's released binary), with `age` included.
-- **No web UI**: backqup only runs the scheduler (dump, encrypt, upload, notify). `web.enabled` defaults to `false` (upstream listens on `0.0.0.0:2703` without auth by default) and the image ships no UI assets.
+- **No web UI**: backqup only runs the scheduler (dump, encrypt, upload, notify). The upstream web UI (and its `web:` config, port 2703) has been removed from the code.
 - **Discord notifier** accepts any 2xx response (Discord webhooks answer `204 No Content`; upstream treated it as a failure).
 
 ```yaml
@@ -75,7 +75,6 @@ https://gobackup.github.io
 - Archive paths or files into a tar.
 - Split large backup file into multiple parts.
 - Run as daemon to backup in schedully.
-- Web UI to manage backups.
 
 ### Databases
 
@@ -261,25 +260,17 @@ models:
         password: password
 ```
 
-### Start Daemon & Web UI
+### Start Daemon
 
-GoBackup built a HTTP Server for Web UI, you can start it by `gobackup start`.
-
-It also will handle the backup schedule.
+Start the scheduler with `gobackup start` (daemon) or `gobackup run` (foreground, used by the Docker image).
 
 ```bash
 $ gobackup start
 
 2023/03/15 23:00:30 [Config] Load config from default path.
-Starting API server on port http://127.0.0.1:2703
 ```
 
 > NOTE: If you wants start without daemon, use `gobackup run` instead.
-
-Now visit http://127.0.0.1:2703 you can see the Web UI:
-
-![gobackup-webui-main](https://user-images.githubusercontent.com/5518/225351245-90ff1eab-673a-44c7-bf37-d1964af24e12.png)
-![gobackup-webui-files](https://user-images.githubusercontent.com/5518/225351184-32d9ada9-2faf-45a3-a7f3-10d41feffb8c.png)
 
 ### Signal handling
 

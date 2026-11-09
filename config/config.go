@@ -26,7 +26,6 @@ var (
 
 	PidFilePath string = filepath.Join(GoBackupDir, "gobackup.pid")
 	LogFilePath string = filepath.Join(GoBackupDir, "gobackup.log")
-	Web         WebConfig
 
 	wLock = sync.Mutex{}
 
@@ -35,14 +34,6 @@ var (
 
 	onConfigChanges = make([]func(fsnotify.Event), 0)
 )
-
-type WebConfig struct {
-	Host     string
-	Port     string
-	Username string
-	Password string
-	Enabled  bool
-}
 
 type ScheduleConfig struct {
 	Enabled bool `json:"enabled,omitempty"`
@@ -223,18 +214,6 @@ func loadConfig() error {
 	if len(Models) == 0 {
 		return fmt.Errorf("no model found in %s", viperConfigFile)
 	}
-
-	// Load web config
-	Web = WebConfig{}
-	viper.SetDefault("web.host", "0.0.0.0")
-	viper.SetDefault("web.port", 2703)
-	// backqup: no web UI by default (upstream listens on 0.0.0.0 without auth); opt in with web.enabled: true.
-	viper.SetDefault("web.enabled", false)
-	Web.Host = viper.GetString("web.host")
-	Web.Port = viper.GetString("web.port")
-	Web.Username = viper.GetString("web.username")
-	Web.Password = viper.GetString("web.password")
-	Web.Enabled = viper.GetBool("web.enabled")
 
 	UpdatedAt = time.Now()
 	logger.Infof("Config loaded, found %d models.", len(Models))
