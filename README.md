@@ -5,6 +5,8 @@ backqup is a fork of [gobackup](https://github.com/gobackup/gobackup) maintained
 - **age public-key encryption** (`encrypt_with: type: age`): backups are encrypted to one or more `age1...` recipients, so the server that runs the backups holds no secret able to decrypt them.
 - **PostgreSQL dump validation**: after a custom-format `pg_dump` (set via `compress`, or `-Fc` / `--format=custom` in `args`), `pg_restore --list` runs on the file and the backup fails if it is corrupt, so a broken dump is never uploaded. Plain-SQL and `all_databases` (`pg_dumpall`) dumps are not validated.
 - **Docker image built from source** (the upstream Dockerfile downloaded upstream's released binary), with `age` included.
+- **No web UI**: backqup only runs the scheduler (dump, encrypt, upload, notify). `web.enabled` defaults to `false` (upstream listens on `0.0.0.0:2703` without auth by default) and the image ships no UI assets.
+- **Discord notifier** accepts any 2xx response (Discord webhooks answer `204 No Content`; upstream treated it as a failure).
 
 ```yaml
 models:

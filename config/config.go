@@ -228,7 +228,8 @@ func loadConfig() error {
 	Web = WebConfig{}
 	viper.SetDefault("web.host", "0.0.0.0")
 	viper.SetDefault("web.port", 2703)
-	viper.SetDefault("web.enabled", true)
+	// backqup: no web UI by default (upstream listens on 0.0.0.0 without auth); opt in with web.enabled: true.
+	viper.SetDefault("web.enabled", false)
 	Web.Host = viper.GetString("web.host")
 	Web.Port = viper.GetString("web.port")
 	Web.Username = viper.GetString("web.username")

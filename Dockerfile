@@ -1,18 +1,11 @@
-FROM node:20-alpine AS web
-RUN apk add --no-cache git
-WORKDIR /src/web
-COPY web/package.json web/yarn.lock ./
-RUN yarn install --frozen-lockfile
-COPY web/ .
-RUN yarn build
-
 FROM golang:1.23-alpine AS build
 ARG VERSION=dev
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-COPY --from=web /src/web/dist web/dist
+# backqup does not ship the web UI: an empty placeholder satisfies the go:embed in web/.
+RUN mkdir -p web/dist && touch web/dist/index.html
 RUN CGO_ENABLED=0 go build -ldflags "-s -w -X main.version=${VERSION}" -o /out/gobackup .
 
 FROM alpine:3.23

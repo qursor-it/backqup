@@ -23,7 +23,8 @@ func NewDiscord(base *Base) *Webhook {
 			return json.Marshal(payload)
 		},
 		checkResult: func(status int, body []byte) error {
-			if status != 200 {
+			// Discord webhooks answer 204 No Content unless the URL has ?wait=true (then 200).
+			if status < 200 || status > 299 {
 				return fmt.Errorf("status: %d, body: %s", status, string(body))
 			}
 

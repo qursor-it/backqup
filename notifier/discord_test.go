@@ -17,4 +17,8 @@ func Test_Discord(t *testing.T) {
 	body, err := s.buildBody("This is title", "This is body")
 	assert.NoError(t, err)
 	assert.Equal(t, `{"content":"This is title\n\nThis is body"}`, string(body))
+
+	assert.NoError(t, s.checkResult(204, nil))
+	assert.NoError(t, s.checkResult(200, []byte(`{"id":"1"}`)))
+	assert.Error(t, s.checkResult(401, []byte(`{"message":"Invalid Webhook Token"}`)))
 }
