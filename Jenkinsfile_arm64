@@ -1,0 +1,102 @@
+// Jenkins job "backqup-arm64" (Pipeline from SCM, branch main, GitHub push trigger).
+// arm64 agent: unit tests, image build, e2e, then pushes for arm64 servers:
+//   every build          -> REGISTRY/qursor/backqup:arm64 and :sha-<commit>-arm64
+//   with VERSION=X.Y.Z   -> also :X.Y.Z-arm64 (an existing version is never overwritten)
+// Credentials: 'qursor-registry' (username/password), 'discord-webhook-internal'.
+pipeline {
+    agent { label 'arm64 && docker' }
+
+    parameters {
+        string(name: 'VERSION', defaultValue: '', description: 'Release version X.Y.Z (published as :X.Y.Z-arm64). Empty: only :arm64 and :sha-<commit>-arm64')
+    }
+
+    options {
+        // the e2e uses a fixed compose project: two builds at once would collide
+        disableConcurrentBuilds()
+    }
+
+    environment {
+        ARCH = 'arm64'
+        REGISTRY = 'registry.qursor.dev'
+        IMAGE = "${REGISTRY}/qursor/backqup"
+        DISCORD_WEBHOOK_URL = credentials('discord-webhook-internal')
+        DOCKER_BUILDKIT = '1'
+        BUILDKIT_PROGRESS = 'plain'
+    }
+
+    stages {
+        stage('Validate version') {
+            when { expression { params.VERSION } }
+            steps {
+                script {
+                    if (!(params.VERSION ==~ /\d+\.\d+\.\d+/)) {
+                        error("VERSION must be X.Y.Z, got '${params.VERSION}'")
+                    }
+                }
+            }
+        }
+
+        stage('Unit tests') {
+            steps {
+                sh 'docker build --target test .'
+            }
+        }
+
+        stage('Build image') {
+            steps {
+                sh 'docker build --build-arg VERSION="${VERSION:-sha-$(git rev-parse --short=7 HEAD)}" -t "backqup:ci-$BUILD_NUMBER" .'
+            }
+        }
+
+        stage('E2E') {
+            steps {
+                sh 'BACKQUP_IMAGE="backqup:ci-$BUILD_NUMBER" sh tests/e2e/run.sh'
+            }
+        }
+
+        stage('Push') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'qursor-registry',
+                                                  usernameVariable: 'REG_USER',
+                                                  passwordVariable: 'REG_PASS')]) {
+                    sh '''
+                        set -eu
+                        SHA=$(git rev-parse --short=7 HEAD)
+                        TAGS="$ARCH sha-$SHA-$ARCH"
+                        echo "$REG_PASS" | docker login "$REGISTRY" -u "$REG_USER" --password-stdin
+                        if [ -n "${VERSION:-}" ]; then
+                            if docker manifest inspect "$IMAGE:$VERSION-$ARCH" >/dev/null 2>&1; then
+                                echo "$IMAGE:$VERSION-$ARCH already exists: release versions are immutable, pick a new VERSION." >&2
+                                exit 1
+                            fi
+                            TAGS="$TAGS $VERSION-$ARCH"
+                        fi
+                        for t in $TAGS; do
+                            docker tag "backqup:ci-$BUILD_NUMBER" "$IMAGE:$t"
+                            docker push "$IMAGE:$t"
+                            docker rmi "$IMAGE:$t" >/dev/null 2>&1 || true
+                        done
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            discordSend description: "backqup ${params.VERSION ?: 'main'} published to the registry (arm64).",
+                    footer: "#${env.BUILD_NUMBER}", link: env.BUILD_URL, result: 'SUCCESS',
+                    title: "[BACKQUP-ARM64] Build SUCCEEDED", webhookURL: env.DISCORD_WEBHOOK_URL
+        }
+        failure {
+            discordSend description: 'backqup arm64 build failed. Check the logs.',
+                    footer: "#${env.BUILD_NUMBER}", link: env.BUILD_URL, result: 'FAILURE',
+                    title: "[BACKQUP-ARM64] Build FAILED", webhookURL: env.DISCORD_WEBHOOK_URL
+        }
+        always {
+            sh 'docker rmi "backqup:ci-$BUILD_NUMBER" >/dev/null 2>&1 || true'
+            sh 'docker logout "$REGISTRY" >/dev/null 2>&1 || true'
+            cleanWs(notFailBuild: true)
+        }
+    }
+}
