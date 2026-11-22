@@ -1,9 +1,9 @@
-// Every branch: unit tests, image build, e2e.
-// Tag vX.Y.Z: also pushes REGISTRY/qursor/backqup:X.Y.Z (and :latest).
-// Jenkins setup: multibranch job with tag discovery, plus credentials
-// 'qursor-registry' (username/password) and 'discord-webhook-internal'.
+// DEV job (Jenkins job "backqup-dev", branch main, triggered by GitHub push).
+// arm64 agent: unit tests, image build, e2e, then pushes
+// REGISTRY/qursor/backqup:dev and :dev-<sha> for the DEV servers (arm64 only).
+// Credentials: 'qursor-registry' (username/password), 'discord-webhook-internal'.
 pipeline {
-    agent any
+    agent { label 'arm64 && docker' }
 
     options {
         // the e2e uses a fixed compose project: two builds at once would collide
@@ -11,7 +11,7 @@ pipeline {
     }
 
     environment {
-        REGISTRY = 'registry.qursor.it' // TODO: the real registry address
+        REGISTRY = 'registry.qursor.dev'
         IMAGE = "${REGISTRY}/qursor/backqup"
         DISCORD_WEBHOOK_URL = credentials('discord-webhook-internal')
         DOCKER_BUILDKIT = '1'
@@ -28,7 +28,7 @@ pipeline {
         stage('Build image') {
             steps {
                 script {
-                    env.VERSION = env.TAG_NAME ? env.TAG_NAME.replaceFirst(/^v/, '') : "dev-${env.BUILD_NUMBER}"
+                    env.VERSION = "dev-${env.GIT_COMMIT.take(7)}"
                 }
                 sh 'docker build --build-arg VERSION="$VERSION" -t "backqup:ci-$BUILD_NUMBER" .'
             }
@@ -41,7 +41,6 @@ pipeline {
         }
 
         stage('Push') {
-            when { tag pattern: 'v\\d+\\.\\d+\\.\\d+', comparator: 'REGEXP' }
             steps {
                 withCredentials([usernamePassword(credentialsId: 'qursor-registry',
                                                   usernameVariable: 'REG_USER',
@@ -50,9 +49,10 @@ pipeline {
                         set -eu
                         echo "$REG_PASS" | docker login "$REGISTRY" -u "$REG_USER" --password-stdin
                         docker tag "backqup:ci-$BUILD_NUMBER" "$IMAGE:$VERSION"
-                        docker tag "backqup:ci-$BUILD_NUMBER" "$IMAGE:latest"
+                        docker tag "backqup:ci-$BUILD_NUMBER" "$IMAGE:dev"
                         docker push "$IMAGE:$VERSION"
-                        docker push "$IMAGE:latest"
+                        docker push "$IMAGE:dev"
+                        docker rmi "$IMAGE:$VERSION" "$IMAGE:dev" >/dev/null 2>&1 || true
                     '''
                 }
             }
@@ -61,14 +61,14 @@ pipeline {
 
     post {
         success {
-            discordSend description: "backqup ${env.VERSION} ${env.TAG_NAME ? 'published to the registry' : 'tested'}.",
+            discordSend description: "backqup ${env.VERSION} published to the registry (dev, arm64).",
                     footer: "#${env.BUILD_NUMBER}", link: env.BUILD_URL, result: 'SUCCESS',
-                    title: "[BACKQUP] Build SUCCEEDED", webhookURL: env.DISCORD_WEBHOOK_URL
+                    title: "[BACKQUP-DEV] Build SUCCEEDED", webhookURL: env.DISCORD_WEBHOOK_URL
         }
         failure {
-            discordSend description: 'backqup build failed. Check the logs.',
+            discordSend description: 'backqup dev build failed. Check the logs.',
                     footer: "#${env.BUILD_NUMBER}", link: env.BUILD_URL, result: 'FAILURE',
-                    title: "[BACKQUP] Build FAILED", webhookURL: env.DISCORD_WEBHOOK_URL
+                    title: "[BACKQUP-DEV] Build FAILED", webhookURL: env.DISCORD_WEBHOOK_URL
         }
         always {
             sh 'docker rmi "backqup:ci-$BUILD_NUMBER" >/dev/null 2>&1 || true'
