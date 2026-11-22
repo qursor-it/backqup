@@ -13,6 +13,7 @@
 # Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
 .glide/
 gobackup.yml
+!tests/e2e/gobackup.yml
 gobackup
 build/
 dist/

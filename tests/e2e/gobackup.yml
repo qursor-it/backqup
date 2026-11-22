@@ -1,0 +1,46 @@
+# Config used by tests/e2e/run.sh; $VARS come from the backqup container env.
+models:
+  pg:
+    databases:
+      appdb:
+        type: postgresql
+        host: pg
+        database: appdb
+        username: postgres
+        password: $PG_PASSWORD
+        compress: gzip
+    encrypt_with:
+      type: age
+      recipients:
+        - $AGE_RECIPIENT
+    storages:
+      s3:
+        type: minio
+        bucket: backups
+        endpoint: http://s3:8333
+        path: pg
+        access_key_id: $S3_ACCESS_KEY
+        secret_access_key: $S3_SECRET_KEY
+        force_path_style: true
+
+  maria:
+    databases:
+      appdb:
+        type: mysql
+        host: maria
+        database: appdb
+        username: root
+        password: $MARIA_PASSWORD
+    encrypt_with:
+      type: age
+      recipients:
+        - $AGE_RECIPIENT
+    storages:
+      s3:
+        type: minio
+        bucket: backups
+        endpoint: http://s3:8333
+        path: maria
+        access_key_id: $S3_ACCESS_KEY
+        secret_access_key: $S3_SECRET_KEY
+        force_path_style: true
